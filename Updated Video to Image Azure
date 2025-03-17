@@ -1,0 +1,70 @@
+import cv2
+import os
+from azure.storage.blob import BlobServiceClient, BlobSasPermissions
+from datetime import datetime, timedelta
+
+# Azure Storage account details
+account_name = 'cs131finalproj'
+video_container = ''
+image_container = ''
+connect_str = ''
+
+# Connect to Azure Blob Storage
+blob_service_client = BlobServiceClient.from_connection_string(connect_str)
+video_container_client = blob_service_client.get_container_client(video_container)
+image_container_client = blob_service_client.get_container_client(image_container)
+
+# List video blobs
+video_blob_list = [blob.name for blob in video_container_client.list_blobs() 
+                   if blob.name.lower().endswith(('.mov', '.mp4'))]
+
+def process_video(blob_i):
+    try:
+        local_video_path = f"temp_{blob_i}"
+        # Download video file locally
+        with open(local_video_path, "wb") as video_file:
+            video_file.write(video_container_client.download_blob(blob_i).readall())
+        
+        cap = cv2.VideoCapture(local_video_path)
+        if not cap.isOpened():
+            print(f"Error: Could not open video {blob_i}")
+            return
+        
+        total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+        frame_interval = 1
+        seq_num = 1  # sequence number for image label
+        current_frame = 0
+        
+        while current_frame + (20 * frame_interval) <= total_frames:
+            for i in range(20):
+                # Read frame by frame instead of setting position each time
+                ret, frame = cap.read()
+                if not ret:
+                    print(f"Error: Could not read frame {current_frame} from {blob_i}")
+                    break
+
+                # Only process frames at the interval
+                if current_frame % frame_interval == 0:
+                    image_name = f"{blob_i}_frame_{current_frame:04d}_seq_{seq_num}.jpg"
+                    # Encode frame to memory
+                    success, encoded_image = cv2.imencode('.jpg', frame)
+                    if success:
+                        image_bytes = encoded_image.tobytes()
+                        image_container_client.upload_blob(name=image_name, data=image_bytes, overwrite=True)
+                        print(f"Uploaded {image_name} to {image_container}")
+                
+                current_frame += 1
+            
+            seq_num += 1
+        
+        cap.release()
+        os.remove(local_video_path)
+        print(f"Processed video {blob_i} successfully.")
+    except Exception as e:
+        print(f"Error processing {blob_i}: {e}")
+
+# Process videos sequentially or in parallel
+for blob_i in video_blob_list:
+    process_video(blob_i)
+
+print("All videos processed.")

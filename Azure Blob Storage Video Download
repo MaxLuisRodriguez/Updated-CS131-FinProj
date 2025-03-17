@@ -1,0 +1,30 @@
+from azure.storage.blob import BlobServiceClient
+import os
+
+# Azure Storage Account details
+CONNECTION_STRING = ""
+CONTAINER_NAME = "cs229beginnerholdoutvideobatch1"  # Replace with your container name
+DOWNLOAD_FOLDER = r"C:\Users\maxlr\OneDrive\Desktop\CS 131\CS 131 Final Project 2025\Beginner holdout videos"  # Local folder to store blobs
+
+# Initialize BlobServiceClient
+blob_service_client = BlobServiceClient.from_connection_string(CONNECTION_STRING)
+container_client = blob_service_client.get_container_client(CONTAINER_NAME)
+
+# Ensure local download folder exists
+if not os.path.exists(DOWNLOAD_FOLDER):
+    os.makedirs(DOWNLOAD_FOLDER)
+
+# List and download all blobs
+for blob in container_client.list_blobs():
+    blob_client = container_client.get_blob_client(blob.name)
+    download_path = os.path.join(DOWNLOAD_FOLDER, blob.name)
+
+    # Ensure directory structure is maintained if blobs are stored in folders
+    os.makedirs(os.path.dirname(download_path), exist_ok=True)
+
+    with open(download_path, "wb") as file:
+        file.write(blob_client.download_blob().readall())
+
+    print(f"Downloaded: {blob.name}")
+
+print("All blobs have been downloaded successfully!")

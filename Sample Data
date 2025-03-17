@@ -1,0 +1,63 @@
+import pandas as pd
+import numpy as np
+
+# File paths for input CSVs
+input_files = {
+    "train_adv": "kps_adv_train.csv",
+    "train_beg": "kps_beg_train.csv",
+    "holdout_adv": "kps_adv_holdout.csv",
+    "holdout_beg": "kps_beg_holdout.csv"
+}
+
+# Output file paths
+output_files = {
+    "train_adv": "test_kps_adv_train_sampled.csv",
+    "train_beg": "test_kps_beg_train_sampled.csv",
+    "holdout_adv": "test_kps_adv_holdout_sampled.csv",
+    "holdout_beg": "test_kps_beg_holdout_sampled.csv"
+}
+
+# Define the number of sequences to sample
+sample_sizes = {
+    "train_adv": 20,
+    "train_beg": 20,
+    "holdout_adv": 10,
+    "holdout_beg": 10
+}
+
+def sample_sequences(df, num_samples):
+    """
+    Sequentially selects full 20-image sequences while preserving batch integrity.
+    Unlike the previous version, this function **does not** filter out sequences with NaN values.
+    """
+    if len(df) < num_samples * 20:
+        raise ValueError("Not enough data to sample the required number of sequences.")
+
+    # Compute the number of full 20-image sequences available
+    num_sequences = len(df) // 20
+    sequence_indices = np.arange(num_sequences)
+
+    # Take the first num_samples sequences in order
+    sampled_indices = sequence_indices[:num_samples]
+
+    # Extract the corresponding full 20-frame sequences
+    sampled_df = pd.concat([df.iloc[i * 20 : (i + 1) * 20] for i in sampled_indices])
+
+    return sampled_df
+
+# Process each file
+for key, file_path in input_files.items():
+    print(f"Processing {file_path}...")
+
+    # Load the CSV file
+    df = pd.read_csv(file_path)
+
+    # Sample sequences **without filtering out NaNs**
+    sampled_df = sample_sequences(df, sample_sizes[key])
+
+    # Save the sampled dataset
+    sampled_df.to_csv(output_files[key], index=False)
+
+    print(f"Saved sampled data to {output_files[key]}")
+
+print("Sampling complete!")
