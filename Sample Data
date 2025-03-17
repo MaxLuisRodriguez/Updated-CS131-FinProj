@@ -19,10 +19,10 @@ output_files = {
 
 # Define the number of sequences to sample
 sample_sizes = {
-    "train_adv": 20,
-    "train_beg": 20,
-    "holdout_adv": 10,
-    "holdout_beg": 10
+    "train_adv": 200,
+    "train_beg": 200,
+    "holdout_adv": 100,
+    "holdout_beg": 100
 }
 
 def sample_sequences(df, num_samples):

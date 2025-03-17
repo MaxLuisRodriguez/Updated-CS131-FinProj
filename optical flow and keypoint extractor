@@ -387,10 +387,10 @@ if __name__ == "__main__":
     processor = SequenceDataProcessor(n_points=50)
 
     # Load Precomputed Keypoint CSVs
-    train_adv_kps_csv = r"C:\Users\maxlr\OneDrive\Desktop\CS 131\NEW 131 FINAL PROJECT SCRIPTS\test_kps_adv_train_sampled.csv"
-    train_beg_kps_csv = r"C:\Users\maxlr\OneDrive\Desktop\CS 131\NEW 131 FINAL PROJECT SCRIPTS\test_kps_beg_train_sampled.csv"
-    holdout_adv_kps_csv = r"C:\Users\maxlr\OneDrive\Desktop\CS 131\NEW 131 FINAL PROJECT SCRIPTS\test_kps_adv_holdout_sampled.csv"
-    holdout_beg_kps_csv = r"C:\Users\maxlr\OneDrive\Desktop\CS 131\NEW 131 FINAL PROJECT SCRIPTS\test_kps_beg_holdout_sampled.csv"
+    train_adv_kps_csv = "test_kps_adv_train_sampled.csv"
+    train_beg_kps_csv = "test_kps_beg_train_sampled.csv"
+    holdout_adv_kps_csv = "test_kps_adv_holdout_sampled.csv"
+    holdout_beg_kps_csv = "test_kps_beg_holdout_sampled.csv"
 
     df_train_adv_kp = pd.read_csv(train_adv_kps_csv)
     df_train_beg_kp = pd.read_csv(train_beg_kps_csv)
@@ -407,7 +407,7 @@ if __name__ == "__main__":
     train_beg_container = "img-beg-train"
     holdout_adv_container = "img-adv-holdout"
     holdout_beg_container = "img-beg-holdout"
-    connection_string = ""
+    connection_string = "DefaultEndpointsProtocol=https;AccountName=cs131finalproj;AccountKey=mdUYnEKOv/IkY/axGC0plybXPdPtoXRF6NsTFyrstcxin1Wy3iu0S1Ofb6jpZGUohe1R8uWPQCbt+AStWk8lTQ==;EndpointSuffix=core.windows.net"
 
     blob_lists_train_adv = processor.get_blob_lists(train_adv_container, connection_string)
     blob_lists_train_beg = processor.get_blob_lists(train_beg_container, connection_string)

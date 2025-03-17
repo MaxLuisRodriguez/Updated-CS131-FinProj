@@ -2,7 +2,7 @@ from azure.storage.blob import BlobServiceClient
 import os
 
 # Azure Storage Account details
-CONNECTION_STRING = ""
+CONNECTION_STRING = "DefaultEndpointsProtocol=https;AccountName=cs131finalproj;AccountKey=mdUYnEKOv/IkY/axGC0plybXPdPtoXRF6NsTFyrstcxin1Wy3iu0S1Ofb6jpZGUohe1R8uWPQCbt+AStWk8lTQ==;EndpointSuffix=core.windows.net"
 CONTAINER_NAME = "cs229beginnerholdoutvideobatch1"  # Replace with your container name
 DOWNLOAD_FOLDER = r"C:\Users\maxlr\OneDrive\Desktop\CS 131\CS 131 Final Project 2025\Beginner holdout videos"  # Local folder to store blobs
 
