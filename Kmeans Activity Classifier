@@ -1,0 +1,124 @@
+import os
+import numpy as np
+import pandas as pd
+from sklearn.cluster import AgglomerativeClustering
+from sklearn.metrics import pairwise_distances_argmin_min
+
+def load_seqs(filename, rows_per_seq=15, has_header=True):
+    df = pd.read_csv(filename, header=0 if has_header else None)
+    header = list(df.columns) if has_header else None
+    data = df.values.astype(float)
+    
+    n_rows = data.shape[0]
+    sequences = []
+    for i in range(n_rows // rows_per_seq):
+        seq = data[i * rows_per_seq : (i + 1) * rows_per_seq, :]
+        features = seq[:, :-1]  # all columns except the last (label)
+        label = seq[0, -1]      # label is taken from the first row (assumed constant over the sequence)
+        sequences.append({
+            'matrix': seq,                     # unflattened sequence (includes label column)
+            'flattened': features.flatten(),   # flattened features (without label)
+            'label': label
+        })
+    return sequences, header
+
+def cluster_and_assign(train_csv, holdout_csv, rows_per_seq=15, target_clusters=2, has_header=True):
+
+    # Load training data
+    train_data, header_train = load_seqs(train_csv, rows_per_seq, has_header)
+    train_features = np.array([d['flattened'] for d in train_data])
+    
+    # Hierarchical clustering
+    clustering = AgglomerativeClustering(n_clusters=target_clusters, linkage='ward')
+    cluster_labels = clustering.fit_predict(train_features)
+    
+    # Organize unflattened training data by cluster 
+    train_clusters = [[] for x in range(target_clusters)]
+    for i, label in enumerate(cluster_labels):
+        train_clusters[label].append(train_data[i]['matrix'])
+    
+    # cluster centroids using flattened features
+    centroids = np.zeros((target_clusters, train_features.shape[1]))
+    for i in range(target_clusters):
+        mask = (cluster_labels == i)
+        if np.any(mask): # ensure cluster has at least one sample
+            centroids[i] = np.mean(train_features[mask], axis=0)
+    
+    # now match holdout
+    holdout_data, header_holdout = load_seqs(holdout_csv, rows_per_seq, has_header)
+    holdout_features = np.array([d['flattened'] for d in holdout_data])
+    
+    # holdout sequences assigned to nearest centroid
+    closest_clusters, _ = pairwise_distances_argmin_min(holdout_features, centroids)
+    
+    # organize holdout data by cluster (unflattened matrix)
+    holdout_clusters = {i: [] for i in range(target_clusters)}
+    for i, cluster_idx in enumerate(closest_clusters):
+        holdout_clusters[cluster_idx].append(holdout_data[i]['matrix'])
+    
+    return train_clusters, holdout_clusters, header_train, header_holdout
+
+def write_clusters_to_csv(clusters, prefix, output_dir, header=None):
+    """
+    Unflattened clusters to csv
+    """
+    os.makedirs(output_dir, exist_ok=True)
+    items = enumerate(clusters) if isinstance(clusters, list) else sorted(clusters.items())
+    
+    for idx, sequences in items:
+        if not sequences:
+            print(f"skipping empty {prefix} cluster {idx}")
+            continue
+        
+        stacked = np.vstack(sequences)
+        df = pd.DataFrame(stacked, columns=header) if header else pd.DataFrame(stacked)
+        filename = os.path.join(output_dir, f"{prefix}_cluster_{idx}_matrix.csv")
+        df.to_csv(filename, index=False)
+def write_flattened_clusters_to_csv(clusters, prefix, output_dir, rows_per_seq, original_header):
+    """
+    Flattened clusters to csv
+    """
+    os.makedirs(output_dir, exist_ok=True)
+    items = enumerate(clusters) if isinstance(clusters, list) else sorted(clusters.items())
+    
+    for idx, sequences in items:
+        if not sequences:
+            print(f"skipping empty {prefix} cluster {idx}")
+            continue
+        
+        flattened_seqs = []
+        for seq in sequences:
+            # flatten features (all columns except last label one) and append the label (from first row)
+            flattened_features = seq[:, :-1].flatten()
+            label = seq[0, -1]
+            flattened_seq = np.hstack([flattened_features, label])
+            flattened_seqs.append(flattened_seq)
+        
+        # generate header for flattened data
+        feature_names = original_header[:-1]  # all columns except label
+        flattened_header = []
+        for r in range(rows_per_seq):
+            for label in feature_names:
+                flattened_header.append(f"{label}_{r}")
+        flattened_header.append(original_header[-1])  # add label column
+        
+        df = pd.DataFrame(flattened_seqs, columns=flattened_header)
+        filename = os.path.join(output_dir, f"{prefix}_cluster_{idx}_flattened.csv")
+        df.to_csv(filename, index=False)
+        print(f"Written {prefix} cluster {idx} (flattened form) with {len(flattened_seqs)} sequences to {filename}")
+
+if __name__ == '__main__':
+    train_csv = 'SHUFFLED_train.csv'
+    holdout_csv = 'SHUFFLED_holdout.csv'
+    output_directory = "activity_clusters"
+    
+    # process sequences using 15-19 rows per sequence
+    train_clusters, holdout_clusters, train_header, holdout_header = cluster_and_assign(
+        train_csv, holdout_csv, rows_per_seq=15, target_clusters=2, has_header=True
+    )
+    
+    write_clusters_to_csv(train_clusters, "train", output_directory, train_header)
+    write_clusters_to_csv(holdout_clusters, "holdout", output_directory, holdout_header)
+    
+    write_flattened_clusters_to_csv(train_clusters, "train", output_directory, rows_per_seq=15, original_header=train_header)
+    write_flattened_clusters_to_csv(holdout_clusters, "holdout", output_directory, rows_per_seq=15, original_header=holdout_header)
